@@ -1,0 +1,52 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "target": "ES2020"
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  // NOTE: src/server is intentionally NOT excluded — it's tightly coupled
+  // with Next.js (shared types, @/* path aliases) so we type-check it
+  // together.  A dedicated src/server/tsconfig.json exists for running
+  // server-only checks via `npm run typecheck:server`.
+  // Test files have their own configs (vitest) and are excluded here.
+  "exclude": [
+    "node_modules",
+    "aurahub",
+    "extension",
+    "scripts",
+    "tasks",
+    "src/__tests__",
+    "src/server/tests"
+  ]
+}

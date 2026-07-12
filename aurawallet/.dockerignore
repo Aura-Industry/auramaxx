@@ -1,0 +1,30 @@
+# git
+.git
+.gitignore
+
+# local/dev
+.env
+.env.*
+!.env.example
+node_modules
+.next
+coverage
+logs
+tmp
+
+# project internals
+tasks
+audits
+todos
+features
+tasks-archive
+autonomous-build-agent
+
+# docs/internal and deployment internals are not required in image context
+docs/internal
+deploy/internal
+
+# editor / os
+.DS_Store
+.vscode
+.idea

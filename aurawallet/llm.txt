@@ -1,0 +1,46 @@
+# AuraWallet - LLM Canonical Entrypoint Index
+
+Website: https://aurawallet.sh
+
+## Public Start Here
+- https://aurawallet.sh/
+- https://aurawallet.sh/yo
+- https://aurawallet.sh/docs
+- https://aurawallet.sh/api
+
+## Skills & MCP Setup
+- https://aurawallet.sh/docs/SKILLS.md
+- https://aurawallet.sh/docs/AGENT_SETUP.md
+- https://aurawallet.sh/docs/AGENT_SETUP.md#skills
+- https://aurawallet.sh/docs/AGENT_SETUP.md#mcp
+- https://aurawallet.sh/docs/MCP.md
+- https://aurawallet.sh/docs/CLI.md
+- https://github.com/Aura-Industry/aurawallet/blob/main/skills/auramaxx/SKILL.md
+
+## Legal
+- https://aurawallet.sh/privacy
+- https://aurawallet.sh/terms
+
+## Machine-Readable Endpoints
+- https://aurawallet.sh/api/apps/manifests
+- https://aurawallet.sh/api/docs/plain
+- https://aurawallet.sh/api/version
+- https://aurawallet.sh/api/events
+
+## Source Docs (Repo)
+- README.md
+- skills/auramaxx/SKILL.md
+- docs/README.md
+- docs/AGENT_SETUP.md
+- docs/SKILLS.md
+- docs/CLI.md
+- docs/MCP.md
+- docs/AUTH.md
+- docs/security.md
+- docs/PROTOCOL.md
+- docs/ARCHITECTURE.md
+- docs/internal/README.md
+- docs/internal/INDEX.md
+- docs/internal/VISION.md
+- docs/internal/CD_PREDEPLOY_TLDR.md
+- docs/internal/TASK_LIFECYCLE.md

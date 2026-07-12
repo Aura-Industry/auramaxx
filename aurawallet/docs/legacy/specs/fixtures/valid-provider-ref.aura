@@ -1,0 +1,1 @@
+AWS_TOKEN=${agent://production/aws?field=access_token}

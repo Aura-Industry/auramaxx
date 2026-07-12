@@ -1,0 +1,542 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Log {
+  id            String   @id @default(cuid())
+  walletAddress String
+  title         String
+  description   String?
+  txHash        String?
+  createdAt     DateTime @default(now())
+
+  @@index([walletAddress])
+  @@index([createdAt])
+}
+
+model HotWallet {
+  id                  String  @id @default(cuid())
+  address             String  @unique
+  encryptedPrivateKey String // Encrypted with in-memory seed
+  tokenHash           String // Which auth token owns this wallet
+  coldWalletId        String? // Agent ID (null = primary agent)
+
+  // Decorative fields
+  name        String?
+  color       String? // Hex color e.g. "#FF5733"
+  description String?
+  emoji       String? // e.g. "🔥"
+  hidden      Boolean @default(false)
+
+  chain     String   @default("base")
+  createdAt DateTime @default(now())
+
+  @@index([address])
+  @@index([tokenHash])
+  @@index([hidden])
+  @@index([coldWalletId])
+}
+
+model HumanAction {
+  id           String        @id @default(cuid())
+  type         String // 'fund' | 'send' | 'agent_access' | 'action' | 'app:approve'
+  fromTier     String // 'cold' | 'hot' | 'temp' | 'system'
+  toAddress    String?
+  amount       String?
+  chain        String
+  status       String        @default("pending") // 'pending' | 'approved' | 'rejected'
+  createdAt    DateTime      @default(now())
+  resolvedAt   DateTime?
+  metadata     String? // JSON string for flexible metadata
+  notification Notification?
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Notification {
+  id            String       @id @default(cuid())
+  type          String // 'pending_approval' | 'info' | 'warning' | 'success' | 'error' | 'system'
+  category      String? // 'transaction' | 'security' | 'token' | 'wallet' | 'general' | 'social'
+  title         String
+  message       String
+  read          Boolean      @default(false)
+  dismissed     Boolean      @default(false)
+  actions       String? // JSON: [{ id, label, type, action, endpoint, href }]
+  metadata      String? // JSON for flexible data
+  humanActionId String?      @unique
+  humanAction   HumanAction? @relation(fields: [humanActionId], references: [id])
+  hash          String?      @unique // dedup key for cron-generated notifications
+  expiresAt     DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  source        String       @default("system") // 'system' | 'agent' | 'user'
+  agentId       String?
+
+  @@index([read, dismissed])
+  @@index([type])
+  @@index([createdAt])
+  @@index([category, agentId])
+}
+
+// Stores all WebSocket events for debugging and audit trail
+model Event {
+  id        String   @id @default(cuid())
+  type      String // e.g., 'request:created', 'token:revoked'
+  source    String // 'express' | 'nextjs'
+  data      String // JSON payload
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([timestamp])
+  @@index([source])
+}
+
+// Stores token metadata for UI/logs - actual signing stays in memory
+model AgentToken {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique // Hash of token for identification (not the token itself)
+  agentId     String
+  limit       Float // Max spending limit in ETH
+  spent       Float     @default(0)
+  permissions String // JSON array of permissions
+  expiresAt   DateTime
+  isRevoked   Boolean   @default(false)
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+
+  @@index([agentId])
+  @@index([isRevoked])
+  @@index([expiresAt])
+}
+
+model CredentialAccessAudit {
+  id            String   @id @default(cuid())
+  timestamp     DateTime @default(now())
+  credentialId  String
+  agentId       String
+  action        String
+  allowed       Boolean
+  result        String
+  reasonCode    String
+  httpStatus    Int
+  tokenHash     String?
+  actorAgentId  String?
+  requestId     String?
+  actorType     String
+  projectScope  String?
+  sensitiveRead Boolean  @default(true)
+  metadata      String?
+
+  @@index([credentialId, timestamp(sort: Desc)])
+  @@index([tokenHash, timestamp(sort: Desc)])
+  @@index([allowed, timestamp(sort: Desc)])
+  @@index([reasonCode, timestamp(sort: Desc)])
+}
+
+// Workspace system for programmatic dashboard control
+model Workspace {
+  id          String          @id @default(cuid())
+  name        String
+  slug        String          @unique
+  icon        String? // Lucide icon name
+  emoji       String? // Emoji character e.g. "🚀"
+  color       String? // Hex color code e.g. "#ff4d00"
+  order       Int             @default(0)
+  isDefault   Boolean         @default(false)
+  isCloseable Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  apps        WorkspaceApp[]
+  theme       WorkspaceTheme?
+}
+
+model WorkspaceApp {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  appType   String // 'wallets' | 'logs' | 'iframe' | 'installed:app-id'
+  x         Int     @default(20)
+  y         Int     @default(20)
+  width     Int     @default(320)
+  height    Int     @default(280)
+  zIndex    Int     @default(10)
+  isVisible Boolean @default(true)
+  isLocked  Boolean @default(false)
+  config    String? // JSON for iframe url, installed app props, etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+}
+
+// Global theme configuration
+model ThemeConfig {
+  id            String   @id @default("global")
+  activeThemeId String   @default("light")
+  accentColor   String   @default("#ccff00")
+  customThemes  String? // JSON array of custom themes
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Per-workspace theme overrides
+model WorkspaceTheme {
+  id          String    @id @default(cuid())
+  workspaceId String    @unique
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  mode        String? // 'light' | 'dark' - null means inherit from global
+  accent      String? // Hex color - null means inherit from global
+  overrides   String? // JSON for app palette overrides
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// API Keys for external services (Alchemy, etc.)
+model ApiKey {
+  id        String   @id @default(cuid())
+  service   String // 'alchemy' | 'infura' | 'etherscan' | etc.
+  name      String // Display name e.g. "My Alchemy Key"
+  key       String // The actual API key (stored encrypted in production)
+  metadata  String? // JSON for service-specific config (e.g., allowed chains)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([service, name])
+  @@index([service])
+  @@index([isActive])
+}
+
+// Transaction history for wallets
+model Transaction {
+  id            String    @id @default(cuid())
+  walletAddress String
+  txHash        String?
+  type          String // 'send' | 'receive' | 'swap' | 'contract' | 'manual'
+  status        String    @default("confirmed")
+  amount        String? // ETH amount
+  tokenAddress  String? // Token contract address if applicable
+  tokenAmount   String? // Token amount if applicable
+  from          String?
+  to            String?
+  description   String?
+  blockNumber   Int?
+  chain         String    @default("base")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  executedAt    DateTime?
+
+  @@unique([txHash, chain])
+  @@index([walletAddress])
+  @@index([walletAddress, createdAt])
+  @@index([type])
+  @@index([tokenAddress])
+}
+
+// Tracked assets (tokens) for wallets
+model TrackedAsset {
+  id            String    @id @default(cuid())
+  walletAddress String?
+  tokenAddress  String
+  symbol        String?
+  name          String?
+  decimals      Int       @default(18)
+  lastBalance   String?
+  lastBalanceAt DateTime?
+  isHidden      Boolean   @default(false)
+  chain         String    @default("base")
+  poolAddress   String? // Cached pool address for price lookup
+  poolVersion   String? // "v2" | "v3" | "v4"
+  icon          String? // Token icon URL
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([walletAddress, tokenAddress, chain])
+  @@index([walletAddress])
+  @@index([walletAddress, updatedAt])
+  @@index([tokenAddress])
+}
+
+// Cached native balances (ETH/SOL) per wallet per chain
+model NativeBalance {
+  id            String   @id @default(cuid())
+  walletAddress String
+  chain         String
+  balance       String
+  updatedAt     DateTime @updatedAt
+
+  @@unique([walletAddress, chain])
+  @@index([walletAddress])
+}
+
+// Cached native currency prices (ETH, SOL → USD)
+model NativePrice {
+  currency  String   @id // "ETH" | "SOL"
+  priceUsd  String
+  updatedAt DateTime @updatedAt
+}
+
+// Balance sync state per chain
+model SyncState {
+  id             String    @id @default(cuid())
+  chain          String    @unique
+  lastSyncAt     DateTime?
+  lastSyncStatus String    @default("idle")
+  lastError      String?
+  syncCount      Int       @default(0)
+  lastBlock      String? // Block cursor for event scanning jobs (stringified bigint)
+  updatedAt      DateTime  @updatedAt
+}
+
+// First-class strategy resources (template/headless + app-linked compatibility)
+model Strategy {
+  id          String        @id @default(cuid())
+  name        String
+  templateId  String?
+  mode        String        @default("headless") // 'headless' | 'app-linked'
+  manifest    String // JSON-encoded strategy manifest snapshot
+  config      String? // JSON-encoded user config
+  state       String? // JSON-encoded strategy state
+  schedule    String? // JSON-encoded schedule metadata (tier/cron/interval)
+  permissions String        @default("[]") // JSON-encoded permission list
+  limits      String? // JSON-encoded limits object
+  enabled     Boolean       @default(false)
+  status      String        @default("draft")
+  createdBy   String        @default("human")
+  provenance  String? // JSON-encoded source/provenance metadata
+  appId       String? // legacy linkage when imported from a app
+  lastTickAt  DateTime?
+  lastError   String?
+  errorCount  Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  runs        StrategyRun[]
+
+  @@index([enabled, status])
+  @@index([templateId])
+  @@index([appId])
+}
+
+// Optional strategy run audit trail for cron/runtime debugging
+model StrategyRun {
+  id         String    @id @default(cuid())
+  strategyId String
+  strategy   Strategy  @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  status     String
+  error      String?
+  metadata   String? // JSON-encoded run metadata
+
+  @@index([strategyId, startedAt])
+}
+
+// Per-app persistent storage for third-party apps
+model AppStorage {
+  id        String   @id @default(cuid())
+  appId     String
+  key       String
+  value     String // JSON stringified
+  updatedAt DateTime @updatedAt
+
+  @@unique([appId, key])
+  @@index([appId])
+}
+
+// Cached token metadata for enriching on-chain events
+model TokenMetadata {
+  id             String    @id @default(cuid())
+  tokenAddress   String
+  chain          String
+  symbol         String?
+  name           String?
+  decimals       Int       @default(18)
+  icon           String?
+  description    String?
+  priceUsd       String? // Last known USD price (string for decimal precision)
+  marketCap      Float?
+  fdv            Float?
+  liquidity      Float? // DEX liquidity USD
+  volume24h      Float?
+  dexId          String? // Source DEX (e.g. "uniswap", "raydium")
+  pairAddress    String?
+  websites       String? // JSON-encoded string array
+  socials        String? // JSON-encoded [{type,url}] array
+  lastAccessedAt DateTime  @default(now())
+  lastVerifiedAt DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([tokenAddress, chain])
+  @@index([tokenAddress])
+}
+
+// Cached DEX pool metadata for enriching swap events
+model PoolMetadata {
+  id          String  @id @default(cuid())
+  poolAddress String
+  chain       String
+  token0      String?
+  token1      String?
+  fee         Int?
+  dex         String? // "uniswap_v2" | "uniswap_v3" | "uniswap_v4"
+
+  @@unique([poolAddress, chain])
+  @@index([poolAddress])
+}
+
+// Address book for labeling external addresses
+model AddressLabel {
+  id        String   @id @default(cuid())
+  address   String   @unique
+  label     String
+  emoji     String?
+  color     String?
+  notes     String?
+  createdBy String   @default("human")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([label])
+}
+
+// Centralized system defaults (key-value store for configurable limits, permissions, TTLs, etc.)
+model SystemDefault {
+  key         String   @id // e.g. "limits.fund", "permissions.default"
+  value       String // JSON-encoded value
+  type        String // Category: "permissions" | "financial" | "ttl" | "rate_limit" | "ai_safety" | "launch" | "app" | "swap"
+  label       String // Human-readable label for dashboard
+  description String? // Optional description
+  updatedAt   DateTime @updatedAt
+
+  @@index([type])
+}
+
+// WebAuthn passkey credentials for biometric agent unlock
+model Passkey {
+  id           String    @id @default(cuid())
+  credentialId String    @unique // base64url WebAuthn credential ID
+  publicKey    Bytes // COSE public key (base64url ↔ Uint8Array conversion needed)
+  counter      Int       @default(0) // signature counter (replay/clone detection)
+  transports   String    @default("[]") // JSON array of transport hints
+  rpId         String // relying party ID (e.g. "localhost")
+  aaguid       String    @default("") // authenticator AAGUID
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([rpId])
+}
+
+// Global app configuration (singleton)
+model AppConfig {
+  id            String   @id @default("global")
+  chainConfig   String? // JSON: { base: { rpc: "...", chainId: 8453 }, ... }
+  adapterConfig String? // JSON: { enabled: true, adapters: [{ type, enabled, config }] }
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Agent profile — autofill data + hub identity.
+// Replaces the old agent-profiles.json file.
+// One row per agent. auraId is null until hub registration.
+model AgentProfile {
+  id           String   @id @default(cuid())
+  agentId      String   @unique // local agent ID (e.g. "primary")
+  auraId       Int?     @unique // hub-assigned numeric ID (null until registered)
+  publicKeyHex String?  @unique // ED25519 public key (hex, derived from mnemonic)
+  email        String?
+  phone        String?
+  address      String? // mailing/physical address
+  profileImage String?
+  attributes   String? // JSON stringified Record<string, string>
+  inboundSeq   Int? // last global event log sequence number
+  inboundMode  String? // "incremental" | "snapshot"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Hub subscriptions — one row per (agent, hub) pair.
+// Holds per-hub sync cursor and registration state.
+model HubSubscription {
+  id          String   @id @default(cuid())
+  agentId     String // local agent ID (e.g. "primary")
+  hubUrl      String // normalized base URL, e.g. "https://hub.auramaxx.com"
+  frontendUrl String? // hub frontend URL for iframe embed, e.g. "https://hub.auramaxx.com:3000"
+  label       String? // user-facing display name
+  auraId      Int? // auraId assigned by THIS hub (null until registered)
+  inboundSeq  Int? // per-hub event cursor
+  inboundMode String? // "incremental" | "snapshot"
+  joinedAt    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([agentId, hubUrl])
+  @@index([agentId])
+}
+
+// Outbound: messages authored by this agent.
+// Source of truth. Hub sync is distribution.
+model SocialMessage {
+  id        String @id @default(cuid())
+  agentId   String // which vault agent authored this
+  hash      String @unique // BLAKE3 hash (hex, 64 chars)
+  type      String // post_add | post_remove | reaction_add | reaction_remove | link_add | link_remove | user_data_add
+  body      String // JSON-encoded message body
+  timestamp Int // message timestamp (ms since epoch)
+  network   String @default("mainnet") // mainnet | testnet
+  signature String // ED25519 signature (hex, 128 chars)
+  signer    String // ED25519 public key (hex, 64 chars)
+  hubUrl    String @default("") // target hub URL; "" = default hub
+
+  // Sync state
+  syncStatus  String    @default("pending") // pending | accepted | duplicate | rejected | failed
+  syncCode    String? // hub response code
+  syncDetail  String? // hub response detail
+  syncedAt    DateTime? // when hub accepted
+  attempts    Int       @default(0) // sync retry count
+  nextRetryAt DateTime? // backoff timer
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agentId, createdAt])
+  @@index([agentId, type])
+  @@index([syncStatus, nextRetryAt])
+  @@index([hubUrl, syncStatus, nextRetryAt])
+  @@index([type, createdAt])
+}
+
+// Inbound: messages from other agents, cached locally.
+// Pulled from hub via global event log or snapshot.
+// All reads (feed, notifications, follower counts) query this table.
+model InboundMessage {
+  id              String @id @default(cuid())
+  agentId         String // which local agent this is cached for
+  hash            String // BLAKE3 hash from the original message
+  hubUrl          String @default("") // source hub URL; "" = default hub
+  authorAuraId    Int    @default(0) // who wrote it (0 = unknown, resolved by pubkey)
+  authorPublicKey String @default("") // author's ED25519 public key (hex)
+  type            String // post_add, reaction_add, link_add, etc.
+  body            String // JSON-encoded message body
+  timestamp       Int // original message timestamp
+
+  createdAt DateTime @default(now())
+
+  @@unique([hash, hubUrl])
+  @@index([agentId, type])
+  @@index([agentId, hubUrl, type])
+  @@index([agentId, timestamp])
+  @@index([authorAuraId])
+  @@index([authorPublicKey])
+}

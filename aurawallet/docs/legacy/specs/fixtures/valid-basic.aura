@@ -1,0 +1,4 @@
+# basic mapping
+API_KEY=plain-token
+DB_URL="postgres://localhost:5432/aura"
+INHERITED=${API_KEY}

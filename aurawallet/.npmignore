@@ -1,0 +1,61 @@
+# Agent/project workflow files (exclude from package)
+.openclaw/
+logs/
+autonomous-build-agent/
+docs/internal/
+docs/specs/
+deploy/internal/
+
+# Development databases
+prisma/dev.db
+prisma/dev.db-journal
+
+# Test files & data
+src/server/tests/
+src/server/test-data/
+/test-data/
+src/server/vitest.config.ts
+src/__tests__/
+src/__tests__/**
+
+# Vitest caches
+src/server/node_modules/
+src/node_modules/
+
+# Dev tooling
+scripts/squahs-and-publish.sh
+
+# Internal / dev config
+CLAUDE.md
+.claude/
+.mcp.json
+AGENTS.md
+BOOTSTRAP.md
+HEARTBEAT.md
+IDENTITY.md
+MEMORY.md
+SOUL.md
+TOOLS.md
+USER.md
+memory/
+
+# Sensitive / CI config
+.env
+.env.*
+
+# Electron builds
+dist/electron/
+public/*.dmg
+public/*.exe
+public/*.AppImage
+public/Aura*
+apps/desktop-electron/
+
+# Repo/meta files not shipped
+.dockerignore
+.gitattributes
+.gitignore
+.npmignore
+Dockerfile
+vercel.json
+.githooks/

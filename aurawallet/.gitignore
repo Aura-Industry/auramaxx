@@ -1,0 +1,86 @@
+# Dependencies
+node_modules/
+
+# Terraform
+.terraform/
+.pnp
+.pnp.js
+
+# Runtime data (NEVER commit)
+/data/
+
+# Legacy file-based pipeline (superseded by DB-only lifecycle)
+/pipeline/
+*.keystore
+*.json.enc
+
+# Environment
+.env*.local
+.env
+
+# Next.js
+.next/
+out/
+
+# Testing
+coverage/
+src/server/test-data/
+/test-data/
+test.db
+test.db-journal
+
+# Claude Code
+.claude/
+.mcp.json
+
+# Aura local config
+.aura/
+
+# Misc
+.DS_Store
+*.pem
+*.tgz
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# SQLite database
+*.db
+*.db-journal
+tmp/
+backups/
+
+# Agent infrastructure (internal)
+autonomous-build-agent/
+.openclaw/
+tasks-recently-deleted/
+/tasks/
+logs/
+.logs/
+human.md
+
+
+# Electron builds
+dist/electron/
+public/*.dmg
+public/*.exe
+
+# Local release helper scripts
+scripts/squahs-and-publish.sh
+
+# Workspace identity/memory files
+AGENTS.md
+BOOTSTRAP.md
+HEARTBEAT.md
+IDENTITY.md
+MEMORY.md
+SOUL.md
+TOOLS.md
+USER.md
+memory/
